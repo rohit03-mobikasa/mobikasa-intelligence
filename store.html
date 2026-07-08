@@ -101,6 +101,15 @@
 
     <h2>Recent metrics entries</h2>
     <div id="metricsList"></div>
+
+    <h2>Recent orders</h2>
+    <div id="ordersList"></div>
+
+    <h2>Products</h2>
+    <div id="productsList"></div>
+
+    <h2>Recommendations</h2>
+    <div id="recommendationsList"></div>
   </div>
 </div>
 
@@ -144,6 +153,48 @@
         </div>
       `).join("");
     }
+
+    const ordersList = document.getElementById("ordersList");
+    if (!json.orders || json.orders.length === 0) {
+      ordersList.innerHTML = '<div class="empty-state">No orders synced yet.</div>';
+    } else {
+      ordersList.innerHTML = json.orders.map((o) => `
+        <div class="metric-row">
+          <div class="meta">Order ${escapeHtml(o.order_number || o.shopify_order_id)} · ${o.order_created_at ? new Date(o.order_created_at).toLocaleDateString() : "no date"}</div>
+          ${o.total_price != null ? `${o.currency || ""} ${o.total_price} · ` : ""}${o.financial_status ? `${escapeHtml(o.financial_status)} · ` : ""}${o.source_name ? `via ${escapeHtml(o.source_name)} · ` : ""}${o.line_items_count != null ? `${o.line_items_count} items` : ""}
+        </div>
+      `).join("");
+    }
+
+    const productsList = document.getElementById("productsList");
+    if (!json.products || json.products.length === 0) {
+      productsList.innerHTML = '<div class="empty-state">No products synced yet.</div>';
+    } else {
+      productsList.innerHTML = json.products.map((p) => `
+        <div class="metric-row">
+          <div class="meta">${escapeHtml(p.title || "Untitled product")}</div>
+          ${p.vendor ? `${escapeHtml(p.vendor)} · ` : ""}${p.product_type ? `${escapeHtml(p.product_type)} · ` : ""}${p.status ? `status: ${escapeHtml(p.status)}` : ""}
+        </div>
+      `).join("");
+    }
+
+    const recommendationsList = document.getElementById("recommendationsList");
+    if (!json.recommendations || json.recommendations.length === 0) {
+      recommendationsList.innerHTML = '<div class="empty-state">No recommendations generated yet.</div>';
+    } else {
+      recommendationsList.innerHTML = json.recommendations.map((r) => `
+        <div class="metric-row">
+          <div class="meta">${r.created_at ? new Date(r.created_at).toLocaleString() : ""}</div>
+          ${escapeHtml(r.summary_text)}
+        </div>
+      `).join("");
+    }
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str == null ? "" : str;
+    return div.innerHTML;
   }
 
   const sourceSelect = document.getElementById("source");
