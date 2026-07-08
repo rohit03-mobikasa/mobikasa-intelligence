@@ -20,14 +20,38 @@ module.exports = async (req, res) => {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const [{ data: merchant, error: merchantError }, { data: metrics, error: metricsError }] = await Promise.all([
+  const [
+    { data: merchant, error: merchantError },
+    { data: metrics, error: metricsError },
+    { data: orders, error: ordersError },
+    { data: products, error: productsError },
+    { data: recommendations, error: recommendationsError }
+  ] = await Promise.all([
     supabase.from("merchants").select("*").eq("merchant_id", id).single(),
     supabase
       .from("marketing_metrics")
       .select("*")
       .eq("merchant_id", id)
       .order("period_start", { ascending: false })
-      .limit(50)
+      .limit(50),
+    supabase
+      .from("orders")
+      .select("*")
+      .eq("merchant_id", id)
+      .order("order_created_at", { ascending: false })
+      .limit(25),
+    supabase
+      .from("products")
+      .select("*")
+      .eq("merchant_id", id)
+      .order("product_updated_at", { ascending: false })
+      .limit(25),
+    supabase
+      .from("recommendations")
+      .select("*")
+      .eq("merchant_id", id)
+      .order("created_at", { ascending: false })
+      .limit(25)
   ]);
 
   if (merchantError) {
@@ -35,6 +59,15 @@ module.exports = async (req, res) => {
   }
   if (metricsError) {
     return res.status(500).json({ error: metricsError.message });
+  }
+  if (ordersError) {
+    return res.status(500).json({ error: ordersError.message });
+  }
+  if (productsError) {
+    return res.status(500).json({ error: productsError.message });
+  }
+  if (recommendationsError) {
+    return res.status(500).json({ error: recommendationsError.message });
   }
 
   // Mask the Shopify token before it ever reaches the browser —
@@ -46,5 +79,5 @@ module.exports = async (req, res) => {
       : null
   };
 
-  return res.status(200).json({ store: masked, metrics });
+  return res.status(200).json({ store: masked, metrics, orders, products, recommendations });
 };
