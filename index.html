@@ -120,7 +120,7 @@
   const SUPABASE_ANON_KEY = "sb_publishable_YrpQN3ZfbIjfeKVSto6GAA_dONIm-dc";
   // --------------------------------------------------------------
 
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const form = document.getElementById("storeForm");
   const submitBtn = document.getElementById("submitBtn");
@@ -139,7 +139,7 @@
     const shopify_token = document.getElementById("shopify_token").value.trim();
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from("merchants")
         .insert([{ store_name, shopify_url, shopify_token, status: "active" }])
         .select();
