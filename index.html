@@ -3,167 +3,67 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Mobikasa — Add a Store</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root {
-    --bg: #0f1115;
-    --card: #171a21;
-    --border: #2a2e38;
-    --text: #e8eaed;
-    --muted: #9099a8;
-    --accent: #5b8def;
-    --accent-hover: #4a7ad9;
-    --success: #3ecf8e;
-    --error: #e5484d;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    display: flex;
-    justify-content: center;
-    padding: 48px 16px;
-  }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 32px;
-    width: 100%;
-    max-width: 480px;
-  }
-  h1 {
-    font-size: 20px;
-    margin: 0 0 4px;
-  }
-  p.subtitle {
-    color: var(--muted);
-    font-size: 14px;
-    margin: 0 0 28px;
-  }
-  label {
-    display: block;
-    font-size: 13px;
-    color: var(--muted);
-    margin: 18px 0 6px;
-  }
-  input {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: #0d0f13;
-    color: var(--text);
-    font-size: 14px;
-  }
-  input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  button {
-    width: 100%;
-    margin-top: 28px;
-    padding: 12px;
-    border-radius: 8px;
-    border: none;
-    background: var(--accent);
-    color: white;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  button:hover { background: var(--accent-hover); }
-  button:disabled { opacity: 0.6; cursor: not-allowed; }
-  .msg {
-    margin-top: 16px;
-    font-size: 13px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    display: none;
-  }
-  .msg.show-success { display: block; background: rgba(62,207,142,0.12); color: var(--success); }
-  .msg.show-error { display: block; background: rgba(229,72,77,0.12); color: var(--error); }
-  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
-</style>
+<title>Mobikasa — Stores</title>
+<link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
+<div class="wrap">
+  <div class="card">
+    <div class="topbar">
+      <div>
+        <h1>Stores</h1>
+        <p class="subtitle" style="margin-bottom: 0;">All merchants in the Mobikasa Intelligence pipeline.</p>
+      </div>
+      <a href="/add-store" class="btn">+ Add New Store</a>
+    </div>
 
-<div class="card">
-  <h1>Add a New Store</h1>
-  <p class="subtitle">This adds a merchant to the Mobikasa Intelligence pipeline. It'll be picked up automatically on the next nightly sync.</p>
-
-  <form id="storeForm">
-    <label for="store_name">Store name</label>
-    <input type="text" id="store_name" placeholder="e.g. Healthy Traditions" required />
-
-    <label for="shopify_url">Shopify store URL</label>
-    <input type="text" id="shopify_url" placeholder="mystore.myshopify.com" required />
-    <div class="hint">Just the *.myshopify.com domain, no https://</div>
-
-    <label for="shopify_token">Shopify Admin API access token</label>
-    <input type="password" id="shopify_token" placeholder="shpat_xxxxxxxxxxxx" required />
-
-    <button type="submit" id="submitBtn">Add Store</button>
-  </form>
-
-  <div class="msg" id="successMsg">Store added. It'll appear in tomorrow's 2AM sync.</div>
-  <div class="msg" id="errorMsg"></div>
+    <ul class="store-list" id="storeList"></ul>
+    <div class="empty-state" id="emptyState" style="display: none;">
+      No stores yet. Click "Add New Store" to get started.
+    </div>
+  </div>
 </div>
 
 <script>
-  // --- Fill these in with your own Supabase project values ---
-  // Project Settings -> API in your Supabase dashboard
-  const SUPABASE_URL = "https://xxdkpjszdwqgphfldfty.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_YrpQN3ZfbIjfeKVSto6GAA_dONIm-dc";
-  // --------------------------------------------------------------
-
-  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  const form = document.getElementById("storeForm");
-  const submitBtn = document.getElementById("submitBtn");
-  const successMsg = document.getElementById("successMsg");
-  const errorMsg = document.getElementById("errorMsg");
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    successMsg.classList.remove("show-success");
-    errorMsg.classList.remove("show-error");
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Adding...";
-
-    const store_name = document.getElementById("store_name").value.trim();
-    const shopify_url = document.getElementById("shopify_url").value.trim();
-    const shopify_token = document.getElementById("shopify_token").value.trim();
-
-    try {
-      const { error } = await supabaseClient
-        .from("merchants")
-        .insert([{ store_name, shopify_url, shopify_token, status: "active" }]);
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Add Store";
-
-      if (error) {
-        console.error("Supabase insert error:", error);
-        errorMsg.textContent = "Error: " + error.message;
-        errorMsg.classList.add("show-error");
-      } else {
-        console.log("Insert succeeded");
-        successMsg.classList.add("show-success");
-        form.reset();
-      }
-    } catch (err) {
-      console.error("Unexpected error:", err);
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Add Store";
-      errorMsg.textContent = "Unexpected error: " + err.message;
-      errorMsg.classList.add("show-error");
+  async function loadStores() {
+    const res = await fetch("/api/stores");
+    if (res.status === 401) {
+      window.location.href = "/login";
+      return;
     }
-  });
-</script>
+    const json = await res.json();
+    const list = document.getElementById("storeList");
+    const empty = document.getElementById("emptyState");
 
+    if (!json.stores || json.stores.length === 0) {
+      empty.style.display = "block";
+      return;
+    }
+
+    json.stores.forEach((store) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.className = "store-row";
+      a.href = "/store?id=" + encodeURIComponent(store.merchant_id);
+      a.innerHTML = `
+        <div>
+          <div class="store-name">${escapeHtml(store.store_name)}</div>
+          <div class="store-url">${escapeHtml(store.shopify_url)}</div>
+        </div>
+        <span class="status-badge">${escapeHtml(store.status)}</span>
+      `;
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  loadStores();
+</script>
 </body>
 </html>
