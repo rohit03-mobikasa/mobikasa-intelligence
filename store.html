@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mobikasa — Store</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="topbar">
+      <h1 id="storeName">Loading...</h1>
+      <a href="/" class="btn btn-secondary">← All stores</a>
+    </div>
+    <p class="subtitle" id="storeUrl"></p>
+
+    <div id="storeMeta" style="font-size: 13px; color: var(--muted);"></div>
+
+    <h2>Add marketing metrics</h2>
+    <form id="metricsForm">
+      <div class="grid-2">
+        <div>
+          <label for="source">Source</label>
+          <select id="source" required>
+            <option value="ga4">GA4</option>
+            <option value="meta_ads">Meta Ads</option>
+            <option value="clarity">Microsoft Clarity</option>
+          </select>
+        </div>
+        <div>
+          <label for="channel">Channel (GA4 only, else leave as "all")</label>
+          <input type="text" id="channel" value="all" placeholder="e.g. Organic Search" />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label for="period_start">Period start</label>
+          <input type="date" id="period_start" required />
+        </div>
+        <div>
+          <label for="period_end">Period end</label>
+          <input type="date" id="period_end" required />
+        </div>
+      </div>
+
+      <!-- GA4 fields -->
+      <div id="ga4Fields">
+        <h2 style="margin-top: 24px;">GA4 fields</h2>
+        <div class="grid-2">
+          <div><label for="sessions">Sessions</label><input type="number" id="sessions" /></div>
+          <div><label for="users">Users</label><input type="number" id="users" /></div>
+        </div>
+        <div class="grid-2">
+          <div><label for="conversions">Conversions</label><input type="number" id="conversions" /></div>
+          <div><label for="revenue">Revenue</label><input type="number" step="0.01" id="revenue" /></div>
+        </div>
+        <div class="grid-2">
+          <div><label for="bounce_rate">Bounce rate (%)</label><input type="number" step="0.01" id="bounce_rate" /></div>
+          <div><label for="avg_engagement_time">Avg engagement time (sec)</label><input type="number" step="0.01" id="avg_engagement_time" /></div>
+        </div>
+      </div>
+
+      <!-- Meta Ads fields -->
+      <div id="metaFields" style="display: none;">
+        <h2 style="margin-top: 24px;">Meta Ads fields</h2>
+        <div class="grid-2">
+          <div><label for="ad_spend">Ad spend</label><input type="number" step="0.01" id="ad_spend" /></div>
+          <div><label for="roas">ROAS</label><input type="number" step="0.01" id="roas" /></div>
+        </div>
+        <div class="grid-2">
+          <div><label for="clicks">Clicks</label><input type="number" id="clicks" /></div>
+          <div><label for="impressions">Impressions</label><input type="number" id="impressions" /></div>
+        </div>
+        <div><label for="reach">Reach</label><input type="number" id="reach" /></div>
+      </div>
+
+      <!-- Clarity fields -->
+      <div id="clarityFields" style="display: none;">
+        <h2 style="margin-top: 24px;">Clarity fields</h2>
+        <div class="grid-2">
+          <div><label for="sessions_recorded">Sessions recorded</label><input type="number" id="sessions_recorded" /></div>
+          <div><label for="avg_scroll_depth">Avg scroll depth (%)</label><input type="number" step="0.01" id="avg_scroll_depth" /></div>
+        </div>
+        <div class="grid-2">
+          <div><label for="rage_clicks">Rage clicks</label><input type="number" id="rage_clicks" /></div>
+          <div><label for="dead_clicks">Dead clicks</label><input type="number" id="dead_clicks" /></div>
+        </div>
+        <div class="grid-2">
+          <div><label for="quick_backs">Quick backs</label><input type="number" id="quick_backs" /></div>
+          <div><label for="excessive_scrolling">Excessive scrolling</label><input type="number" id="excessive_scrolling" /></div>
+        </div>
+        <div><label for="js_errors">JS errors</label><input type="number" id="js_errors" /></div>
+      </div>
+
+      <button type="submit" id="submitBtn" style="width: 100%; margin-top: 24px;">Save Metrics</button>
+    </form>
+    <div class="msg" id="successMsg">Metrics saved.</div>
+    <div class="msg" id="errorMsg"></div>
+
+    <h2>Recent metrics entries</h2>
+    <div id="metricsList"></div>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const merchantId = params.get("id");
+
+  if (!merchantId) {
+    document.getElementById("storeName").textContent = "No store selected";
+  }
+
+  async function loadStore() {
+    const res = await fetch("/api/store-detail?id=" + encodeURIComponent(merchantId));
+    if (res.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
+    const json = await res.json();
+    if (!res.ok) {
+      document.getElementById("storeName").textContent = "Error loading store";
+      return;
+    }
+
+    document.getElementById("storeName").textContent = json.store.store_name;
+    document.getElementById("storeUrl").textContent = json.store.shopify_url;
+    document.getElementById("storeMeta").innerHTML = `
+      Shopify token: ${json.store.shopify_token || "—"}<br/>
+      GA4 property: ${json.store.ga4_property_id || "not set"}<br/>
+      Meta account: ${json.store.meta_account_id || "not set"}<br/>
+      Google Ads: ${json.store.google_ads_id || "not set"}
+    `;
+
+    const list = document.getElementById("metricsList");
+    if (!json.metrics || json.metrics.length === 0) {
+      list.innerHTML = '<div class="empty-state">No metrics entered yet.</div>';
+    } else {
+      list.innerHTML = json.metrics.map((m) => `
+        <div class="metric-row">
+          <div class="meta">${m.source} · ${m.channel} · ${m.period_start} → ${m.period_end}</div>
+          ${m.sessions != null ? `Sessions: ${m.sessions} · ` : ""}${m.conversions != null ? `Conversions: ${m.conversions} · ` : ""}${m.revenue != null ? `Revenue: ${m.revenue} · ` : ""}${m.ad_spend != null ? `Spend: ${m.ad_spend} · ` : ""}${m.roas != null ? `ROAS: ${m.roas} · ` : ""}${m.rage_clicks != null ? `Rage clicks: ${m.rage_clicks}` : ""}
+        </div>
+      `).join("");
+    }
+  }
+
+  const sourceSelect = document.getElementById("source");
+  function toggleFields() {
+    const val = sourceSelect.value;
+    document.getElementById("ga4Fields").style.display = val === "ga4" ? "block" : "none";
+    document.getElementById("metaFields").style.display = val === "meta_ads" ? "block" : "none";
+    document.getElementById("clarityFields").style.display = val === "clarity" ? "block" : "none";
+  }
+  sourceSelect.addEventListener("change", toggleFields);
+  toggleFields();
+
+  const form = document.getElementById("metricsForm");
+  const submitBtn = document.getElementById("submitBtn");
+  const successMsg = document.getElementById("successMsg");
+  const errorMsg = document.getElementById("errorMsg");
+
+  function numOrNull(id) {
+    const val = document.getElementById(id).value;
+    return val === "" ? null : Number(val);
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    successMsg.classList.remove("show-success");
+    errorMsg.classList.remove("show-error");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Saving...";
+
+    const payload = {
+      merchant_id: merchantId,
+      source: sourceSelect.value,
+      channel: document.getElementById("channel").value.trim() || "all",
+      period_start: document.getElementById("period_start").value,
+      period_end: document.getElementById("period_end").value,
+      sessions: numOrNull("sessions"),
+      users: numOrNull("users"),
+      conversions: numOrNull("conversions"),
+      revenue: numOrNull("revenue"),
+      bounce_rate: numOrNull("bounce_rate"),
+      avg_engagement_time: numOrNull("avg_engagement_time"),
+      ad_spend: numOrNull("ad_spend"),
+      clicks: numOrNull("clicks"),
+      impressions: numOrNull("impressions"),
+      roas: numOrNull("roas"),
+      reach: numOrNull("reach"),
+      sessions_recorded: numOrNull("sessions_recorded"),
+      rage_clicks: numOrNull("rage_clicks"),
+      dead_clicks: numOrNull("dead_clicks"),
+      quick_backs: numOrNull("quick_backs"),
+      excessive_scrolling: numOrNull("excessive_scrolling"),
+      avg_scroll_depth: numOrNull("avg_scroll_depth"),
+      js_errors: numOrNull("js_errors"),
+      entry_method: "manual"
+    };
+
+    try {
+      const res = await fetch("/api/add-metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const json = await res.json();
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Save Metrics";
+
+      if (!res.ok) {
+        errorMsg.textContent = "Error: " + json.error;
+        errorMsg.classList.add("show-error");
+      } else {
+        successMsg.classList.add("show-success");
+        form.reset();
+        toggleFields();
+        loadStore();
+      }
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Save Metrics";
+      errorMsg.textContent = "Unexpected error: " + err.message;
+      errorMsg.classList.add("show-error");
+    }
+  });
+
+  if (merchantId) loadStore();
+</script>
+</body>
+</html>
