@@ -139,10 +139,9 @@
     const shopify_token = document.getElementById("shopify_token").value.trim();
 
     try {
-      const { data, error } = await supabaseClient
+      const { error } = await supabaseClient
         .from("merchants")
-        .insert([{ store_name, shopify_url, shopify_token, status: "active" }])
-        .select();
+        .insert([{ store_name, shopify_url, shopify_token, status: "active" }]);
 
       submitBtn.disabled = false;
       submitBtn.textContent = "Add Store";
@@ -152,7 +151,7 @@
         errorMsg.textContent = "Error: " + error.message;
         errorMsg.classList.add("show-error");
       } else {
-        console.log("Insert succeeded:", data);
+        console.log("Insert succeeded");
         successMsg.classList.add("show-success");
         form.reset();
       }
