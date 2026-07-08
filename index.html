@@ -84,8 +84,8 @@
     border-radius: 8px;
     display: none;
   }
-  .msg.success { display: block; background: rgba(62,207,142,0.12); color: var(--success); }
-  .msg.error { display: block; background: rgba(229,72,77,0.12); color: var(--error); }
+  .msg.show-success { display: block; background: rgba(62,207,142,0.12); color: var(--success); }
+  .msg.show-error { display: block; background: rgba(229,72,77,0.12); color: var(--error); }
   .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 </style>
 </head>
@@ -109,8 +109,8 @@
     <button type="submit" id="submitBtn">Add Store</button>
   </form>
 
-  <div class="msg success" id="successMsg">Store added. It'll appear in tomorrow's 2AM sync.</div>
-  <div class="msg error" id="errorMsg"></div>
+  <div class="msg" id="successMsg">Store added. It'll appear in tomorrow's 2AM sync.</div>
+  <div class="msg" id="errorMsg"></div>
 </div>
 
 <script>
@@ -129,8 +129,8 @@
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    successMsg.style.display = "none";
-    errorMsg.style.display = "none";
+    successMsg.classList.remove("show-success");
+    errorMsg.classList.remove("show-error");
     submitBtn.disabled = true;
     submitBtn.textContent = "Adding...";
 
@@ -138,24 +138,30 @@
     const shopify_url = document.getElementById("shopify_url").value.trim();
     const shopify_token = document.getElementById("shopify_token").value.trim();
 
-    const { error } = await supabase.from("merchants").insert([
-      {
-        store_name,
-        shopify_url,
-        shopify_token,
-        status: "active"
+    try {
+      const { data, error } = await supabase
+        .from("merchants")
+        .insert([{ store_name, shopify_url, shopify_token, status: "active" }])
+        .select();
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Add Store";
+
+      if (error) {
+        console.error("Supabase insert error:", error);
+        errorMsg.textContent = "Error: " + error.message;
+        errorMsg.classList.add("show-error");
+      } else {
+        console.log("Insert succeeded:", data);
+        successMsg.classList.add("show-success");
+        form.reset();
       }
-    ]);
-
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Add Store";
-
-    if (error) {
-      errorMsg.textContent = "Error: " + error.message;
-      errorMsg.style.display = "block";
-    } else {
-      successMsg.style.display = "block";
-      form.reset();
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Add Store";
+      errorMsg.textContent = "Unexpected error: " + err.message;
+      errorMsg.classList.add("show-error");
     }
   });
 </script>
