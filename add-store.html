@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mobikasa — Add a Store</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="wrap" style="max-width: 480px;">
+  <div class="card">
+    <div class="topbar">
+      <h1>Add a New Store</h1>
+      <a href="/" class="btn btn-secondary">← Back</a>
+    </div>
+    <p class="subtitle">This adds a merchant to the Mobikasa Intelligence pipeline. Shopify data will be picked up automatically on the next nightly sync.</p>
+
+    <form id="storeForm">
+      <label for="store_name">Store name</label>
+      <input type="text" id="store_name" placeholder="e.g. Healthy Traditions" required />
+
+      <label for="shopify_url">Shopify store URL</label>
+      <input type="text" id="shopify_url" placeholder="mystore.myshopify.com" required />
+      <div class="hint">Just the *.myshopify.com domain, no https://</div>
+
+      <label for="shopify_token">Shopify Admin API access token</label>
+      <input type="password" id="shopify_token" placeholder="shpat_xxxxxxxxxxxx" required />
+
+      <h2>Optional — add now or later from the store page</h2>
+
+      <label for="ga4_property_id">GA4 property ID</label>
+      <input type="text" id="ga4_property_id" placeholder="e.g. 123456789" />
+
+      <label for="meta_account_id">Meta Ads account ID</label>
+      <input type="text" id="meta_account_id" placeholder="e.g. act_1234567890" />
+
+      <label for="google_ads_id">Google Ads customer ID</label>
+      <input type="text" id="google_ads_id" placeholder="e.g. 123-456-7890" />
+
+      <button type="submit" id="submitBtn" style="width: 100%; margin-top: 24px;">Add Store</button>
+    </form>
+
+    <div class="msg" id="successMsg">Store added.</div>
+    <div class="msg" id="errorMsg"></div>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById("storeForm");
+  const submitBtn = document.getElementById("submitBtn");
+  const successMsg = document.getElementById("successMsg");
+  const errorMsg = document.getElementById("errorMsg");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    successMsg.classList.remove("show-success");
+    errorMsg.classList.remove("show-error");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Adding...";
+
+    const payload = {
+      store_name: document.getElementById("store_name").value.trim(),
+      shopify_url: document.getElementById("shopify_url").value.trim(),
+      shopify_token: document.getElementById("shopify_token").value.trim(),
+      ga4_property_id: document.getElementById("ga4_property_id").value.trim(),
+      meta_account_id: document.getElementById("meta_account_id").value.trim(),
+      google_ads_id: document.getElementById("google_ads_id").value.trim()
+    };
+
+    try {
+      const res = await fetch("/api/add-store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const json = await res.json();
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Add Store";
+
+      if (!res.ok) {
+        errorMsg.textContent = "Error: " + json.error;
+        errorMsg.classList.add("show-error");
+      } else {
+        successMsg.classList.add("show-success");
+        form.reset();
+      }
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Add Store";
+      errorMsg.textContent = "Unexpected error: " + err.message;
+      errorMsg.classList.add("show-error");
+    }
+  });
+</script>
+</body>
+</html>
