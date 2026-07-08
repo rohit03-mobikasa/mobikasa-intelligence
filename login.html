@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mobikasa — Login</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="wrap" style="max-width: 380px; padding-top: 96px;">
+  <div class="card">
+    <h1>Mobikasa Intelligence</h1>
+    <p class="subtitle">Enter the password to continue.</p>
+    <form id="loginForm">
+      <label for="password">Password</label>
+      <input type="password" id="password" required autofocus />
+      <button type="submit" id="submitBtn" style="width: 100%; margin-top: 20px;">Log in</button>
+    </form>
+    <div class="msg" id="errorMsg"></div>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById("loginForm");
+  const submitBtn = document.getElementById("submitBtn");
+  const errorMsg = document.getElementById("errorMsg");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorMsg.classList.remove("show-error");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Logging in...";
+
+    const password = document.getElementById("password").value;
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        errorMsg.textContent = json.error || "Login failed";
+        errorMsg.classList.add("show-error");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Log in";
+        return;
+      }
+
+      window.location.href = "/";
+    } catch (err) {
+      errorMsg.textContent = "Unexpected error: " + err.message;
+      errorMsg.classList.add("show-error");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Log in";
+    }
+  });
+</script>
+</body>
+</html>
